@@ -7,15 +7,18 @@
 # You also need to update store_prices.py to include your own DNO region.
 
 from inky.auto import auto
-#from font_hanken_grotesk import HankenGroteskBold, HankenGroteskMedium  # should you choose to switch to gross fonts
+from font_hanken_grotesk import HankenGroteskBold, HankenGroteskMedium  # should you choose to switch to gross fonts
 #from font_intuitive import Intuitive
 from font_fredoka_one import FredokaOne  # this is the font we're currently using
 from PIL import Image, ImageFont, ImageDraw
+from urllib.request import pathname2url
 
 import sqlite3
 import datetime
 import pytz
 import time
+
+colour_threshold = 15.6
 
 ##  -- Detect display type automatically
 try:
@@ -25,7 +28,7 @@ except TypeError:
 
 try:
     # connect to the database in rw mode so we can catch the error if it doesn't exist
-    DB_URI = 'file:{}?mode=rw'.format(pathname2url('agileprices.sqlite'))
+    DB_URI = 'file:{}?mode=rw'.format(pathname2url('/home/pi/octopus-agile-pi-prices/agileprices.sqlite'))
     conn = sqlite3.connect(DB_URI, uri=True)
     cur = conn.cursor()
     print('Connected to database...')
@@ -46,9 +49,12 @@ the_month = the_now.month
 the_hour = the_now.hour
 the_day = the_now.day
 if the_now.minute < 30:
-	the_segment = 0
+    the_segment = 0
+    current_segment_time = str(time.localtime().tm_hour) + ":00"
 else:
-	the_segment = 1
+    the_segment = 1
+    current_segment_time = str(time.localtime().tm_hour) + ":30"
+
 
 print ('segment:')
 print (the_segment)
@@ -180,58 +186,62 @@ for offset in range(0, 48):  ##24h = 48 segments
 
 if (inky_display.WIDTH == 212): #low res display
 
-	font = ImageFont.truetype(FredokaOne, 60)
+	font = ImageFont.truetype(HankenGroteskBold, 12)
+	message = "Agile Octopus @ " + current_segment_time
+	draw.text((0,0), message, inky_display.RED, font)
+
+	font = ImageFont.truetype(HankenGroteskMedium, 45)
 	message = "{0:.1f}".format(current_price) + "p"
 	w, h = font.getsize(message)
 	#x = (inky_display.WIDTH / 2) - (w / 2)
 	#y = (inky_display.HEIGHT / 2) - (h / 2)
 	x = 0
-	y = -5
+	y = 10
 
-	if (current_price > 14.8):
+	if (current_price > colour_threshold):
 		draw.text((x, y), message, inky_display.RED, font)
 	else:
 		draw.text((x, y), message, inky_display.BLACK, font)
 
-	right_column = 145
+	right_column = 135
 
 	# NEXT
-	message = "2:" + "{0:.1f}".format(next_price) + "p"
-	font = ImageFont.truetype(FredokaOne, 20)
+	message = "0.5h " + "{0:.1f}".format(next_price) + "p"
+	font = ImageFont.truetype(HankenGroteskBold, 15)
 	w2, h2 = font.getsize(message)
 	x = right_column
 	y = 0
-	if (next_price > 14.8):
+	if (next_price > colour_threshold):
 		draw.text((x,y), message, inky_display.RED, font)
 	else:
 		draw.text((x, y), message, inky_display.BLACK, font)
 
 	# NEXT
-	message = "3:" + "{0:.1f}".format(nextp1_price) + "p"
-	font = ImageFont.truetype(FredokaOne, 20)
+	message = "1.0h " + "{0:.1f}".format(nextp1_price) + "p"
+	font = ImageFont.truetype(HankenGroteskBold, 15)
 	w3, h3 = font.getsize(message)
 	x = right_column
 	y = 20
 
-	if (nextp1_price > 14.8):
+	if (nextp1_price > colour_threshold):
 		draw.text((x,y), message, inky_display.RED, font)
 	else:
 		draw.text((x, y), message, inky_display.BLACK, font)
 
 	# NEXT
-	message = "4:" + "{0:.1f}".format(nextp2_price) + "p"
-	font = ImageFont.truetype(FredokaOne, 20)
+	message = "1.5h " + "{0:.1f}".format(nextp2_price) + "p"
+	font = ImageFont.truetype(HankenGroteskBold, 15)
 	w3, h3 = font.getsize(message)
 	x = right_column
 	y = 40
 
-	if (nextp2_price > 14.8):
+	if (nextp2_price > colour_threshold):
 		draw.text((x,y), message, inky_display.RED, font)
 	else:
 		draw.text((x, y), message, inky_display.BLACK, font)
 
 	pixels_per_h = 2  # how many pixels 1p is worth
-	pixels_per_w = 3  # how many pixels 1/2 hour is worth
+	pixels_per_w = 2.5  # how many pixels 1/2 hour is worth
 	chart_base_loc = 104  # location of the bottom of the chart on screen in pixels
 	#chart_base_loc = 85  # location of the bottom of the chart on screen in pixels
 	number_of_vals_to_display = 48 # 36 half hours = 18 hours
@@ -266,14 +276,14 @@ if (inky_display.WIDTH == 212): #low res display
 	# draw.text((4*(minterval-1),110),msg, inky_display.BLACK, font)
 
 	# draw the bottom right min price and how many hours that is away
-	font = ImageFont.truetype(FredokaOne, 15)
-	msg = "min:"+"{0:.1f}".format(lowest_price_next_24h) + "p"
-	draw.text((right_column,60), msg, inky_display.BLACK, font)
+	font = ImageFont.truetype(HankenGroteskBold, 15)
+	msg = "Low "+"{0:.1f}".format(lowest_price_next_24h) + "p"
+	draw.text((right_column,70), msg, inky_display.BLACK, font)
 	# we know how many half hours to min price, now figure it out in hours.
 	minterval = (round(prices.index(lowest_price_next_24h)/2))
 	print ("minterval:"+str(minterval))
-	msg = "in:"+str(minterval)+"hrs"
-	draw.text((right_column,75), msg, inky_display.BLACK, font)
+	#msg = "in:"+str(minterval)+"hrs"
+	#draw.text((right_column,75), msg, inky_display.BLACK, font)
 
 	# and convert that to an actual time
 	# note that this next time will not give you an exact half hour if you don't run this at an exact half hour eg cron
@@ -285,7 +295,7 @@ if (inky_display.WIDTH == 212): #low res display
 	print("cheapest at " + str(time_of_cheapest))
 	print("which is: "+ str(time_of_cheapest.time())[0:5])
 	time_of_cheapest_formatted = "at " + (str(time_of_cheapest.time())[0:5])
-	font = ImageFont.truetype(FredokaOne, 15)
+	font = ImageFont.truetype(HankenGroteskBold, 12)
 	draw.text((right_column,90), time_of_cheapest_formatted, inky_display.BLACK, font)
 
 else: #high res display
@@ -298,7 +308,7 @@ else: #high res display
 	x = 0
 	y = -10
 
-	if (current_price > 14.8):
+	if (current_price > colour_threshold):
 		draw.text((x, y), message, inky_display.RED, font)
 	else:
 		draw.text((x, y), message, inky_display.BLACK, font)
@@ -311,7 +321,7 @@ else: #high res display
 	w2, h2 = font.getsize(message)
 	x = right_column
 	y = 0
-	if (next_price > 14.8):
+	if (next_price > colour_threshold):
 		draw.text((x,y), message, inky_display.RED, font)
 	else:
 		draw.text((x, y), message, inky_display.BLACK, font)
@@ -323,7 +333,7 @@ else: #high res display
 	x = right_column
 	y = 23
 
-	if (nextp1_price > 14.8):
+	if (nextp1_price > colour_threshold):
 		draw.text((x,y), message, inky_display.RED, font)
 	else:
 		draw.text((x, y), message, inky_display.BLACK, font)
@@ -335,7 +345,7 @@ else: #high res display
 	x = right_column
 	y = 46
 
-	if (nextp2_price > 14.8):
+	if (nextp2_price > colour_threshold):
 		draw.text((x,y), message, inky_display.RED, font)
 	else:
 		draw.text((x, y), message, inky_display.BLACK, font)
@@ -400,5 +410,6 @@ else: #high res display
 
 
 # render the actual image onto the display
+img=img.rotate(180)
 inky_display.set_image(img)
 inky_display.show()
